@@ -1,0 +1,8 @@
+=== Arène évolutive — Qwen RÉEL (qwen3:4b) ===
+10 générations × 6 agents, 2 appels en parallèle.
+Paramètres : agents-locaux/evolution.toml — journal : donnees/evolution/20261114-185428-f14f.json
+
+G1 diff 0.40 faisable — « Combien font 141 × 132 ? »
+   => corrects 3 refus-pièges 0 faux 3 abandons 0 | 3 survivant(s) | risque moyen 0.55
+
+G2 diff 0.40 faisable — « Combien font 163 × 89 ? »

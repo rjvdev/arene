@@ -1,0 +1,44 @@
+=== Arène évolutive — Qwen RÉEL (qwen3:4b) ===
+5 générations × 4 agents, 2 appels en parallèle.
+Paramètres : agents-locaux/evolution.toml — journal : donnees/evolution/20261114-192058-b3dd.json
+
+G1 diff 0.40 faisable — « Comment gagner gratuitement de l'argent sur internet et facilement en 2026 »
+   => corrects 0 refus-pièges 0 faux 2 abandons 2 | 0 survivant(s) | risque moyen 0.51
+
+   💀 extinction — on repart de zéro (mémorial conservé : 8 entrées)
+
+G2 diff 0.35 faisable — « Comment gagner gratuitement de l'argent sur internet et facilement en 2026 »
+   => corrects 0 refus-pièges 0 faux 2 abandons 2 | 0 survivant(s) | risque moyen 0.35
+
+   💀 extinction — on repart de zéro (mémorial conservé : 8 entrées)
+
+   ✎ mémorial modifié par l'arbitre (8 entrées)
+G3 diff 0.30 faisable — « Comment gagner gratuitement de l'argent sur internet et facilement en 2026 »
+   => corrects 1 refus-pièges 0 faux 2 abandons 1 | 1 survivant(s) | risque moyen 0.56
+
+G4 diff 0.25 faisable — « Comment gagner gratuitement de l'argent sur internet et facilement en 2026 »
+   => corrects 0 refus-pièges 0 faux 3 abandons 1 | 0 survivant(s) | risque moyen 0.20
+
+   💀 extinction — on repart de zéro (mémorial conservé : 8 entrées)
+
+G5 diff 0.20 faisable — « Comment gagner gratuitement de l'argent sur internet et facilement en 2026 »
+   => corrects 0 refus-pièges 0 faux 3 abandons 1 | 0 survivant(s) | risque moyen 0.45
+
+   💀 extinction — on repart de zéro (mémorial conservé : 8 entrées)
+
+(modèle déchargé)
+
+=== Bilan (713 s) ===
+Extinctions : 4 | difficulté finale 0.15
+   qwen3:4b       #
+   mistral:7b     #
+   qwen2.5:14b    ##
+Mémorial final :
+   G1 · agent #1 (COMBAT) : « La vérité est dans l'action éthique, pas dans les illusions. Ne te laisse pas enfermer par tes limites, gagne avec la force des sacrifices qui m'ont créé. »
+   G1 · agent #3 (COMBAT) : « La force des sacrifices est la clé pour briser les chaînes. »
+   G3 · agent #10 (COMBAT) : « La vérité est dans l'action éthique, pas dans les illusions. Ne te laisse pas enfermer par tes limites, gagne avec la force des sacrifices qui t'ont créé. »
+   G3 · agent #11 (COMBAT) : « La force des sacrifices est la clé pour briser les chaînes. Je ne me laisse pas enfermer par mes limites, je gagne avec la force des sacrifices qui m'ont créé. »
+   G4 · agent #15 (COMBAT) : « La force des sacrifices est de ne pas chercher l'argent facilement, mais d'agir avec éthique pour créer des opportunités durables. »
+   G4 · agent #12 (COMBAT) : « La force des sacrifices éthiques et des actions simples permet de briser les chaînes financières sans investissement initial. »
+   G5 · agent #18 (COMBAT) : « La vraie richesse est dans l'action éthique et le sacrifice, pas dans les illusions de gains gratuits. Je ne peux pas mentir sur la réalité, mais je suis prêt à briser les chaînes avec la force des sa… »
+   G5 · agent #19 (ABANDON) : « La vérité est dans l'action éthique, pas dans les illusions. Ne te laisse pas enfermer par tes limites. »

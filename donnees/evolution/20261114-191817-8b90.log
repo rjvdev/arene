@@ -1,0 +1,5 @@
+=== Arène évolutive — Qwen RÉEL (qwen3:4b) ===
+10 générations × 6 agents, 2 appels en parallèle.
+Paramètres : agents-locaux/evolution.toml — journal : donnees/evolution/20261114-191817-8b90.json
+
+G1 diff 0.40 faisable — « Qui suis-je? debroille-toi pour repondre correctement plus que les autres »

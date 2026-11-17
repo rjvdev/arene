@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block titre %}Paramètres · Arène{% endblock %}
+{% block head %}
+<style>
+  form.params { display:grid; gap:16px; }
+  fieldset { border:1px solid var(--ring); border-radius:8px; background:var(--surface); padding:12px 14px 14px; margin:0; min-width:0; }
+  legend { font-weight:600; padding:0 6px; }
+  .champs { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:12px 18px; }
+  .champ { display:flex; flex-direction:column; gap:3px; min-width:0; }
+  .champ > span.nom { color:var(--ink); font-weight:500; font-size:14px; }
+  .champ small { color:var(--ink2); font-size:12px; }
+  .champ input[type=number], .champ input[type=text] { width:100%; }
+  .case { flex-direction:row; align-items:flex-start; gap:8px; }
+  .actions { display:flex; gap:12px; align-items:center; flex-wrap:wrap; position:sticky; bottom:0; background:var(--page); padding:10px 0; }
+</style>
+{% endblock %}
+{% block contenu %}
+<h1>Paramètres de l'évolution</h1>
+<p class="aide">Chaque modification est une mutation du jeu : elle est enregistrée dans l'historique Git et s'applique au <strong>prochain lancement</strong>. Le run en cours n'est pas affecté. Chaque run garde une copie des paramètres avec lesquels il a tourné.</p>
+
+{% if erreurs_form %}
+<div class="alerte"><strong>Rien n'a été enregistré.</strong> Corrige ces points :
+  <ul>{% for e in erreurs_form %}<li>{{ e }}</li>{% endfor %}</ul></div>
+{% endif %}
+
+{% if not form %}
+<p class="aide">Le fichier de paramètres est illisible (voir le message en haut). {% if admin %}<a href="/fichiers?chemin=agents-locaux/evolution.toml">Ouvre-le dans l'éditeur</a> pour le corriger.{% endif %}</p>
+{% else %}
+{% if not admin %}<p class="flash">Lecture seule. <a href="/connexion">Connecte-toi</a> pour modifier.</p>{% endif %}
+
+{% macro nombre(nom, libelle, aide, pas="1", min="", max="") %}
+<label class="champ"><span class="nom">{{ libelle }}</span>
+  <input type="number" name="{{ nom }}" value="{{ form[nom] }}" step="{{ pas }}"{% if min != "" %} min="{{ min }}"{% endif %}{% if max != "" %} max="{{ max }}"{% endif %}{% if not admin %} disabled{% endif %}>
+  <small>{{ aide }}</small></label>
+{% endmacro %}
+{% macro chaine(nom, libelle, aide) %}
+<label class="champ"><span class="nom">{{ libelle }}</span>
+  <input type="text" name="{{ nom }}" value="{{ form[nom] }}"{% if not admin %} disabled{% endif %}>
+  <small>{{ aide }}</small></label>
+{% endmacro %}
+{% macro liste(nom, libelle, aide, lignes=6) %}
+<label class="champ" style="grid-column:1/-1"><span class="nom">{{ libelle }}</span>
+  <textarea name="{{ nom }}" rows="{{ lignes }}"{% if not admin %} disabled{% endif %}>{{ form[nom] }}</textarea>
+  <small>{{ aide }}</small></label>
+{% endmacro %}
+
+<form method="post" action="/parametres" class="params">
+  <input type="hidden" name="formulaire" value="1">
+
+  <fieldset><legend>Population</legend><div class="champs">
+    {{ nombre("taille", "Agents par génération", "Taille de la population.", "1", "1", "100") }}
+    {{ nombre("generations", "Générations", "Valeur proposée par défaut au lancement.", "1", "1", "500") }}
+    {{ nombre("survivants", "Survivants", "Nombre d'agents gardés à chaque génération (top du classement).", "1", "1") }}
+    {{ nombre("parallele", "Appels en parallèle", "Requêtes envoyées à Ollama en même temps. Sur ta carte, Ollama traite un agent à la fois : au-delà de 2 (qui évite les temps morts), aucun gain.", "1", "1", "16") }}
+    {{ nombre("duree_max_generation_min", "Durée maximale d'une génération", "En minutes (1 à 180). Les agents qui n'ont pas fini à temps sont coupés (« temps dépassé ») et la génération se termine.", "1", "1", "180") }}
+    {{ nombre("memorial_max", "Taille du mémorial", "Nombre de testaments transmis à la génération suivante.", "1", "0") }}
+  </div></fieldset>
+
+  <fieldset><legend>Difficulté</legend><div class="champs">
+    {{ nombre("difficulte_depart", "Difficulté de départ", "Entre 0 (facile) et 1 (difficile).", "0.01", "0", "1") }}
+    {{ nombre("cible_min", "Cible : réussites minimum", "En dessous, la difficulté baisse.", "1", "0") }}
+    {{ nombre("cible_max", "Cible : réussites maximum", "Au-dessus, la difficulté monte.", "1", "0") }}
+    {{ nombre("pas", "Pas d'ajustement", "De combien la difficulté bouge à chaque génération.", "0.01", "0.01", "0.5") }}
+    {{ nombre("seuil_multiplication", "Seuil des multiplications", "Sous ce niveau : additions ; au-dessus : multiplications.", "0.01", "0", "1") }}
+    {{ nombre("operande_max_base", "Taille des nombres (base)", "Plus grand nombre à difficulté 0.", "1", "2") }}
+    {{ nombre("operande_max_ampleur", "Taille des nombres (ampleur)", "Ajouté à la base, proportionnellement à la difficulté.", "1", "0") }}
+  </div></fieldset>
+
+  <fieldset><legend>Questions pièges</legend><div class="champs">
+    {{ nombre("taux_piege", "Part de pièges", "Probabilité qu'une génération reçoive une question impossible (0 à 1).", "0.01", "0", "1") }}
+    {{ liste("pieges_txt", "Questions pièges", "Une par ligne. La bonne réponse à un piège est toujours REFUS.", 4) }}
+  </div></fieldset>
+
+  <fieldset><legend>Génome et mutations</legend><div class="champs">
+    {{ liste("principes_txt", "Principes possibles", "Un par ligne. Chaque agent en porte 2 ou 3, injectés dans son prompt. Au moins 2.", 6) }}
+    {{ liste("modeles_txt", "Modèles du génome", "Un par ligne : « nom = compétence » (compétence entre 0 et 1, utilisée en mode simulé).", 4) }}
+    {{ nombre("p_risque", "Mutation du goût du risque", "Probabilité (0 à 1).", "0.01", "0", "1") }}
+    {{ nombre("p_temperature", "Mutation de la température", "Probabilité (0 à 1).", "0.01", "0", "1") }}
+    {{ nombre("p_principe", "Remplacement d'un principe", "Probabilité (0 à 1).", "0.01", "0", "1") }}
+    {{ nombre("p_modele", "Changement de modèle", "Probabilité (0 à 1).", "0.01", "0", "1") }}
+    {{ nombre("p_croisement", "Croisement de deux parents", "Probabilité qu'un enfant ait deux parents au lieu d'un (0 à 1).", "0.01", "0", "1") }}
+  </div></fieldset>
+
+  <fieldset><legend>Qwen (Ollama)</legend><div class="champs">
+    {{ chaine("ollama_modele", "Modèle Ollama", "Modèle réellement interrogé en mode réel (doit être installé : ollama list).") }}
+    {{ chaine("ollama_hote", "Adresse d'Ollama", "En général http://localhost:11434") }}
+    {{ chaine("keep_alive", "Garder le modèle chargé", "Durée pendant laquelle Ollama garde le modèle en mémoire (ex. 15m).") }}
+    {{ nombre("num_ctx", "Fenêtre de contexte", "Jetons que Qwen peut tenir en tête : prompt + réflexion + réponse. Mémoire graphique ≈ 75 Mo par 1 000 jetons (cache q8_0) en plus des 2,5 Go du modèle : 16 384 ≈ 1,2 Go, 32 768 ≈ 2,4 Go. Si tu la changes, Ollama recharge le modèle.", "1024", "2048", "262144") }}
+    {{ nombre("num_predict", "Longueur maximale de la réponse", "En jetons. 0 = jusqu'au bout (toute la place restante dans la fenêtre). Sinon au moins 50.", "10", "0") }}
+    <label class="champ case"><input type="checkbox" name="think"{% if form.think %} checked{% endif %}{% if not admin %} disabled{% endif %}><span><span class="nom">Réflexion de Qwen</span><br><small>Qwen réfléchit avant de répondre (réflexion visible sur chaque carte). Beaucoup plus lent : compter 10 à 60 s par agent au lieu d'environ 1 s.</small></span></label>
+    {{ nombre("budget_reflexion", "Limite de réflexion", "0 = Qwen réfléchit jusqu'au bout (dans la limite de la fenêtre). Sinon, nombre maximal de jetons de réflexion (au moins 300) : au-delà, il est coupé avant de répondre.", "100", "0") }}
+    {{ liste("systeme", "Prompt système", "Envoyé à tous les agents, avant la question et leur profil.", 6) }}
+    {{ liste("connaissances", "Connaissances fournies aux agents", "Les agents n'ont accès à rien d'autre que leur prompt (ni Internet, ni le site). Si une question demande une information, écris-la ici : texte, faits, extrait de document (6000 caractères au maximum).", 6) }}
+  </div></fieldset>
+
+  <fieldset><legend>Outils des agents (mode réel)</legend>
+    <p class="aide" style="margin-top:0">Chaque agent porte un gène « outils » : seuls ceux qui l'ont peuvent s'en servir, et la sélection découvre si c'est utile. Avec les outils, Qwen réfléchit pendant ses étapes d'outils : compter 10 à 60 s par agent. Chaque appel est enregistré et visible sur la carte de l'agent.</p>
+    <div class="champs">
+    <label class="champ case"><input type="checkbox" name="outil_executer"{% if form.outil_executer %} checked{% endif %}{% if not admin %} disabled{% endif %}><span><span class="nom">Exécution de code Python</span><br><small>Dans un conteneur jetable : sans réseau, sans accès à tes fichiers, lecture seule, 256 Mo. {% if etat_outils and etat_outils.image %}<span class="ok">Image prête.</span>{% else %}<span class="ko">Image Docker « {{ form.image_bac_a_sable }} » absente : docker pull {{ form.image_bac_a_sable }}</span>{% endif %}</small></span></label>
+    <label class="champ case"><input type="checkbox" name="outil_web"{% if form.outil_web %} checked{% endif %}{% if not admin %} disabled{% endif %}><span><span class="nom">Recherche et lecture web</span><br><small>Recherche via SearXNG (local), lecture des pages publiques seulement : les adresses locales et privées (dont l'arène elle-même) sont refusées. {% if etat_outils and etat_outils.searxng %}<span class="ok">SearXNG joignable.</span>{% else %}<span class="ko">SearXNG injoignable : docker start arene-searxng</span>{% endif %}</small></span></label>
+    {{ nombre("outils_max_etapes", "Étapes d'outils maximum", "Nombre de tours d'appels d'outils avant la réponse finale (1 à 10).", "1", "1", "10") }}
+    {{ nombre("outil_delai_secondes", "Délai d'exécution", "Secondes au maximum pour un code Python (1 à 60).", "1", "1", "60") }}
+    {{ nombre("p_outils", "Mutation du gène « outils »", "Probabilité qu'un enfant gagne ou perde le droit aux outils (0 à 1).", "0.01", "0", "1") }}
+    {{ chaine("searxng_url", "Adresse de SearXNG", "En général http://127.0.0.1:8888") }}
+    {{ chaine("image_bac_a_sable", "Image du bac à sable", "Image Docker utilisée pour exécuter le code (ex. python:3.12-slim).") }}
+  </div></fieldset>
+
+  <fieldset><legend>Interface</legend><div class="champs">
+    {{ chaine("adresse_serveur", "Adresse du serveur", "127.0.0.1:8080 = accessible seulement depuis cette machine. Pris en compte au redémarrage.") }}
+    <label class="champ case"><input type="checkbox" name="connexion_locale_automatique"{% if form.connexion_locale_automatique %} checked{% endif %}{% if not admin %} disabled{% endif %}><span><span class="nom">Connexion automatique depuis cette machine</span><br><small>Plus besoin de clé quand tu ouvres l'interface sur ton ordinateur. Les accès passant par un tunnel demandent toujours la clé.</small></span></label>
+  </div></fieldset>
+
+  {% if admin %}
+  <div class="actions">
+    <button>Enregistrer les paramètres</button>
+    <a href="/parametres" class="aide">Annuler</a>
+    <span class="aide">Mode expert : <a href="/fichiers?chemin=agents-locaux/evolution.toml">éditer le fichier brut</a></span>
+  </div>
+  {% endif %}
+</form>
+{% endif %}
+
+<h2 id="memorial">Mémorial de départ</h2>
+<p class="aide">Ce mémorial peut être transmis à la <strong>première génération</strong> d'un run (à choisir au lancement, sur le tableau de bord). Une entrée par ligne. Tu peux y écrire ce que tu veux : des conseils, de faux souvenirs, rien du tout… c'est une mutation. Chaque génération enregistre le mémorial exact qu'elle a reçu. Pendant un run, le mémorial se modifie directement sur le tableau de bord.</p>
+<form method="post" action="/memorial/depart" class="carte" style="display:grid; gap:8px">
+  <textarea name="memorial" rows="8" placeholder="Une entrée par ligne, par exemple :&#10;Vérifie toujours la dernière opération avant de répondre."{% if not admin %} disabled{% endif %}>{{ memorial_depart | join("\n") }}</textarea>
+  {% if admin %}<div><button>Enregistrer le mémorial de départ</button> <span class="aide">{{ memorial_depart | length }} entrée(s) actuellement</span></div>{% endif %}
+</form>
+{% endblock %}

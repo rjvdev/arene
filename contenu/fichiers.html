@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block titre %}{% if chemin %}{{ chemin }} · {% endif %}Fichiers · Arène{% endblock %}
+{% block head %}
+<style>
+  .fichiers { display:grid; grid-template-columns:minmax(220px, 300px) 1fr; gap:16px; align-items:start; }
+  @media (max-width: 760px) { .fichiers { grid-template-columns:1fr; } }
+  .liste { max-height:75vh; overflow:auto; }
+  .liste h3 { margin:10px 0 4px; font-size:13px; color:var(--ink2); text-transform:uppercase; letter-spacing:.04em; }
+  .liste a { display:block; padding:2px 0; font-size:13px; overflow-wrap:anywhere; }
+  .liste a.actif { font-weight:700; color:var(--ink); }
+  textarea.code { font-family: ui-monospace, "SFMono-Regular", Menlo, monospace; font-size:13px; min-height:65vh; }
+</style>
+{% endblock %}
+{% block contenu %}
+<h1>Fichiers <span class="aide" style="font-size:14px; font-weight:400">mode expert</span></h1>
+<p class="aide">Tout ce qui pilote l'arène est un fichier : les paramètres, les gabarits des pages (et <code>graphiques.js</code>), et les résultats de chaque run. Les fichiers TOML et JSON sont vérifiés avant d'être enregistrés ; chaque enregistrement est versionné dans Git.</p>
+<div class="fichiers">
+  <nav class="carte liste" aria-label="Fichiers">
+    {% set groupes = {"agents-locaux": "Paramètres", "contenu": "Gabarits des pages", "donnees/evolution": "Résultats des runs"} %}
+    {% for g, titre in groupes | items %}
+      <h3>{{ titre }}</h3>
+      {% for f in fichiers %}{% if f.groupe == g %}<a href="/fichiers?chemin={{ f.chemin | urlencode }}"{% if f.chemin == chemin %} class="actif"{% endif %}>{{ f.chemin[(g | length) + 1:] }}</a>{% endif %}{% endfor %}
+    {% endfor %}
+  </nav>
+  <div>
+    {% if chemin %}
+    <form method="post" action="/fichiers" class="carte">
+      <h3><code>{{ chemin }}</code>{% if not existe %} <span class="aide">(nouveau fichier)</span>{% endif %}</h3>
+      {% if chemin == "agents-locaux/evolution.toml" %}<p class="aide">Plus simple : la page <a href="/parametres">Paramètres</a> propose un formulaire pour ce fichier.</p>{% endif %}
+      <input type="hidden" name="chemin" value="{{ chemin }}">
+      <textarea name="contenu" class="code" spellcheck="false">{{ contenu }}</textarea>
+      <p><button>Enregistrer</button></p>
+    </form>
+    {% else %}
+    <div class="carte"><p class="aide">Choisis un fichier dans la liste.</p></div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

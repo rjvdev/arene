@@ -1,0 +1,19 @@
+[package]
+name = "arene"
+version = "0.1.0"
+edition = "2021"
+description = "L'Arène des générations : jeu évolutionnaire entre agents IA"
+
+[dependencies]
+axum = "0.7"
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_urlencoded = "0.7"
+toml = "0.8"
+minijinja = { version = "2", features = ["loader", "urlencode", "json"] }
+sha2 = "0.10"
+rand = "0.8"
+chrono = "0.4"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+futures = "0.3"

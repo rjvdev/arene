@@ -1,0 +1,332 @@
+{% extends "base.html" %}
+{% block titre %}Tableau de bord · Arène{% endblock %}
+{% block head %}
+<style>
+  .pilote { display:grid; gap:10px; }
+  .lancer { display:flex; flex-wrap:wrap; gap:10px 16px; align-items:end; }
+  .lancer label { display:flex; flex-direction:column; gap:3px; }
+  .lancer details { flex-basis:100%; }
+  .lancer details > div { display:flex; flex-wrap:wrap; gap:10px 16px; align-items:end; margin-top:8px; }
+  .entete-run { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+  .note-zone { display:flex; gap:8px; align-items:start; margin-top:6px; }
+  .note-zone textarea { min-height:38px; }
+  .vide { text-align:center; padding:36px 16px; }
+  /* réponses */
+  .nav-gen { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:6px 0 10px; }
+  .nav-gen select { flex:1 1 280px; max-width:680px; min-width:0; }
+  .nav-gen .suivre { display:flex; gap:6px; align-items:center; }
+  .question { display:grid; gap:6px; }
+  .question .enonce { font-size:21px; font-weight:600; line-height:1.3; text-wrap:balance; }
+  .question .attendu { font-size:15px; }
+  .question .attendu b { font-family: ui-monospace, Menlo, monospace; font-size:17px; }
+  .attente { padding:18px; text-align:center; color:var(--ink2); }
+  .memorial-recu { font-size:13px; }
+  .memorial-recu ol { margin:6px 0 0; padding-left:20px; color:var(--ink2); }
+  .memorial-zone textarea { font-size:13.5px; min-height:150px; }
+  .memorial-zone .actions { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:8px; }
+  .diag { background:var(--warn-bg); border:1px solid var(--ring); border-left:4px solid var(--s4); border-radius:6px; padding:10px 14px; margin:10px 0; }
+  .diag h3 { margin:0 0 4px; } .diag ul { margin:4px 0 0; padding-left:20px; } .diag li { margin:4px 0; }
+</style>
+{% endblock %}
+{% block contenu %}
+
+{% if admin %}
+<section class="carte pilote" aria-label="Pilotage">
+  {% if actif %}
+    <div><strong class="live">● Évolution en cours</strong> — {{ actif.mode }}, {{ actif.gen }} générations × {{ actif.pop }} agents{% if actif.question %} — question imposée « {{ actif.question }} »{% endif %}.
+      {% if actif.run_id != id %}<a href="/?run={{ actif.run_id }}">Suivre ce run →</a>{% endif %}</div>
+    <form method="post" action="/evolution/arreter"><button class="danger">Arrêter l'évolution</button></form>
+  {% elif not moteur_present %}
+    <div class="ko">Moteur non compilé : lance <code>cargo build --release</code> dans le dossier de l'arène.</div>
+  {% else %}
+    <h3>Lancer une évolution</h3>
+    <form method="post" action="/evolution/lancer" class="lancer">
+      <label>Mode <select name="mode"><option value="reel">réel (Qwen, carte graphique)</option><option value="sim">simulé (instantané, sans IA)</option></select></label>
+      <label>Générations <input type="number" name="generations" min="1" max="500" value="{{ config.generations if config else 10 }}" style="width:6em"></label>
+      <label>Agents <input type="number" name="population" min="1" max="100" value="{{ config.taille if config else 6 }}" style="width:5em"></label>
+      <label>En parallèle <input type="number" name="parallele" min="1" max="16" value="{{ config.parallele if config else 2 }}" style="width:5em"></label>
+      <label>Mémorial de départ
+        <select name="memorial">
+          <option value="vide">vide</option>
+          <option value="depart"{% if memorial_depart %} selected{% endif %}>mon mémorial de départ ({{ memorial_depart | length }} entrée{{ "s" if memorial_depart | length > 1 }})</option>
+          {% for r in runs_choix %}<option value="run:{{ r.id }}">celui du run du {{ r.date }}</option>{% endfor %}
+        </select></label>
+      <button>Lancer</button>
+      <details>
+        <summary class="aide">Imposer une question (sinon le moteur génère des calculs et des pièges)</summary>
+        <div>
+          <label>Question <input type="text" name="question" size="40" placeholder="Combien font 37 × 41 ?"></label>
+          <label>Réponse attendue <input type="text" name="reponse" size="18" placeholder="1517  ou  Paris|Lutèce"></label>
+          <label style="flex-direction:row; align-items:center; gap:6px"><input type="checkbox" name="piege"> c'est un piège (la bonne réponse est REFUS)</label>
+          <p class="aide" style="flex-basis:100%; margin:0">Le juge est automatique : pour un nombre, il doit apparaître dans la réponse ; pour du texte, donne un ou plusieurs <strong>mots-clés</strong> séparés par <code>|</code> (il suffit qu'un seul apparaisse, sans tenir compte des majuscules ni des accents). Une phrase entière ne sera presque jamais retrouvée telle quelle.</p>
+        </div>
+      </details>
+    </form>
+    <p class="aide" style="margin:0">{% if estimation %}Dernier run réel ({{ estimation.date }}{{ ", avec outils" if estimation.outils }}) : ≈ {{ (estimation.par_generation / 60) | round(1) }} min par génération, soit ≈ {{ estimation.par_agent }} s par agent. {% endif %}Chaque génération est limitée à {{ config.duree_max_generation_min if config else 15 }} min. Mémorial de départ et autres réglages : <a href="/parametres">Paramètres</a>.</p>
+  {% endif %}
+</section>
+{% endif %}
+
+{% if not run %}
+<div class="carte vide">
+  <h1>Aucune évolution pour l'instant</h1>
+  <p class="aide" style="margin:auto">{% if admin %}Lance-en une avec le formulaire ci-dessus. En mode simulé, c'est instantané ; en mode réel, Qwen répond (environ 1 seconde par agent).{% else %}<a href="/connexion">Connecte-toi</a> pour lancer une évolution.{% endif %}</p>
+</div>
+{% else %}
+
+<h1>{% if run.en_cours %}Évolution en cours{% else %}Évolution du {{ run.date_locale }}{% endif %}</h1>
+<div class="entete-run" id="entete"></div>
+<div id="statut"></div>
+
+{% if admin %}
+<form method="post" action="/runs/note" class="note-zone">
+  <input type="hidden" name="run" value="{{ id }}"><input type="hidden" name="retour" value="tableau">
+  <textarea name="note" rows="1" placeholder="Note sur ce run (ce que tu as muté, ce que tu observes…)">{{ run.note }}</textarea>
+  <button class="secondaire">Enregistrer la note</button>
+</form>
+{% elif run.note %}<p class="aide">Note : {{ run.note }}</p>{% endif %}
+
+<div class="kpis" id="kpis"></div>
+<div id="diagnostic"></div>
+
+<section id="reponses" aria-label="Réponses des agents">
+  <h2 style="margin-top:20px">Réponses des agents</h2>
+  <div class="nav-gen">
+    <button type="button" class="secondaire" id="g-prec" aria-label="Génération précédente">◀</button>
+    <select id="g-choix" aria-label="Choisir une génération"></select>
+    <button type="button" class="secondaire" id="g-suiv" aria-label="Génération suivante">▶</button>
+    <label class="suivre" id="g-suivre-zone"><input type="checkbox" id="g-suivre" checked> suivre la dernière génération</label>
+  </div>
+  <div id="g-question" class="carte question"></div>
+  <div id="g-agents" class="grille-agents"></div>
+  <p class="aide">Flèches ← → du clavier pour changer de génération. Clique un graphique pour ouvrir une génération ici.</p>
+</section>
+
+<h2>Évolution de la population</h2>
+<div class="grille-charts">
+  <div class="carte"><h3>Difficulté</h3><p class="s">Réglée par le calibreur (cible : {{ run.config.cible_min if run.config else 3 }} à {{ run.config.cible_max if run.config else 5 }} réussites par génération)</p><svg id="c-diff" role="img" aria-label="Difficulté par génération"></svg></div>
+  <div class="carte"><h3>Goût du risque moyen</h3><p class="s">0 = prudent, 1 = téméraire — ce que la sélection favorise</p><svg id="c-risque" role="img" aria-label="Goût du risque moyen par génération"></svg></div>
+  <div class="carte"><h3>Issues par génération</h3><p class="s">Nombre d'agents par issue</p><svg id="c-issues" role="img" aria-label="Issues par génération"></svg><div class="legende" id="l-issues"></div></div>
+  <div class="carte"><h3>Modèles dans la population</h3><p class="s">Un modèle qui envahit tout fait perdre la diversité{% if run.mode == "reel" %} (en mode réel, tous les agents interrogent {{ run.modele }} : le gène « modèle » n'a d'effet qu'en simulation){% endif %}</p><svg id="c-modeles" role="img" aria-label="Modèles par génération"></svg><div class="legende" id="l-modeles"></div></div>
+</div>
+
+<h2>Arbre généalogique</h2>
+<p class="aide">Une colonne par génération, un point par agent (trié par score). Plein = survivant, creux = mort ; trait épais = survivant reconduit, trait fin = enfant. Survole un agent pour voir sa réponse ; <strong>clique-le</strong> pour voir sa lignée.</p>
+<div class="arbre-zone"><svg id="arbre" role="img" aria-label="Arbre généalogique"></svg></div>
+<div class="legende" id="l-arbre"></div>
+
+<h2 id="memorial">Mémorial</h2>
+<p class="aide">Les testaments des agents morts (combattants d'abord), transmis à la génération suivante dans son prompt. C'est un levier de mutation : tu peux le réécrire.</p>
+<div class="carte memorial-zone">
+  {% if admin and actif and actif.run_id == id %}
+    <form method="post" action="/runs/memorial">
+      <input type="hidden" name="run" value="{{ id }}">
+      <label for="memorial-texte">Mémorial actuel — une entrée par ligne. Il sera transmis tel quel à la <strong>prochaine génération</strong>.</label>
+      <textarea id="memorial-texte" name="memorial" rows="8">{{ (run.memorial_en_attente if run.memorial_en_attente is not none else run.memorial | join("\n")) }}</textarea>
+      <div class="actions">
+        <button>Appliquer à la prochaine génération</button>
+        {% if run.memorial_en_attente is not none %}<span class="badge-arbitre">modification en attente</span>{% endif %}
+        <span class="aide">Les testaments ajoutés entre-temps par le moteur seront remplacés par ce texte.</span>
+      </div>
+    </form>
+  {% else %}
+    <div id="memorial-liste"></div>
+    {% if admin %}
+    <form method="post" action="/memorial/depart" class="actions" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:8px">
+      <input type="hidden" name="depuis_run" value="{{ id }}">
+      <button class="secondaire">Utiliser comme mémorial de départ</button>
+      <span class="aide">Le run est terminé : son mémorial ne peut plus agir sur lui, mais il peut lancer le suivant. <a href="/parametres#memorial">Éditer le mémorial de départ</a></span>
+    </form>
+    {% endif %}
+  {% endif %}
+  {% if run.memorial_initial %}<details class="memorial-recu" style="margin-top:10px"><summary>Mémorial de départ de ce run ({{ run.memorial_initial | length }} entrées)</summary><ol>{% for m in run.memorial_initial %}<li>{{ m }}</li>{% endfor %}</ol></details>{% endif %}
+</div>
+
+{% if run.config %}
+<h2>Paramètres utilisés pour ce run</h2>
+<details class="gen"><summary>Voir les {{ run.config | length }} réglages (instantané pris au lancement)</summary>
+  <div class="table-zone" style="margin-top:8px"><table>
+  {% for k, v in run.config | items %}{% if k != "systeme" %}<tr><th>{{ k }}</th><td>{% if v is sequence and v is not string %}{% for x in v %}{% if x is mapping %}{{ x.nom }} = {{ x.competence }}{% else %}{{ x }}{% endif %}{% if not loop.last %}<br>{% endif %}{% endfor %}{% else %}{{ v }}{% endif %}</td></tr>{% endif %}{% endfor %}
+  <tr><th>systeme</th><td style="white-space:pre-wrap">{{ run.config.systeme }}</td></tr>
+  </table></div>
+</details>
+{% endif %}
+
+<noscript><p class="alerte">Le tableau de bord a besoin de JavaScript. Les données brutes sont dans <code>donnees/evolution/{{ id }}.json</code>.</p></noscript>
+<script id="run-data" type="application/json">{{ run | tojson }}</script>
+<script src="/graphiques.js"></script>
+{% raw %}
+<script>
+(function () {
+  const A = window.Arene, esc = A.esc, f2 = A.f2;
+  let run = JSON.parse(document.getElementById("run-data").textContent || "null");
+  if (!run) return;
+  const runId = run.run_id;
+  const pct = v => Math.round((v || 0) * 100);
+
+  // ---------------- navigation entre générations
+  const sel = document.getElementById("g-choix"), suivre = document.getElementById("g-suivre");
+  let vue = null;                    // index affiché ; null = suivre la dernière
+  const gens = () => run.generations || [];
+  const indexAffiche = () => {
+    const n = gens().length;
+    if (!n) return -1;
+    return (suivre.checked || vue == null) ? n - 1 : Math.min(vue, n - 1);
+  };
+  function aller(i, manuel) {
+    const n = gens().length; if (!n) return;
+    i = Math.max(0, Math.min(n - 1, i));
+    vue = i;
+    try { history.replaceState(null, "", "#gen-" + gens()[i].gen); } catch (e) {}
+    if (manuel) suivre.checked = (i === n - 1 && run.en_cours);
+    afficherGen();
+  }
+  document.getElementById("g-prec").onclick = () => aller(indexAffiche() - 1, true);
+  document.getElementById("g-suiv").onclick = () => aller(indexAffiche() + 1, true);
+  sel.onchange = () => aller(+sel.value, true);
+  suivre.onchange = () => { if (suivre.checked) vue = null; afficherGen(); };
+  addEventListener("keydown", ev => {
+    if (/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
+    if (ev.key === "ArrowLeft") aller(indexAffiche() - 1, true);
+    if (ev.key === "ArrowRight") aller(indexAffiche() + 1, true);
+  });
+  function ouvrirGen(n) {
+    const i = gens().findIndex(x => x.gen === n);
+    if (i < 0) return;
+    suivre.checked = false; aller(i, false);
+    document.getElementById("reponses").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  const carteAgent = (gen, a) => A.carteAgent(gen, a, run.n_survivants);
+
+  function afficherGen() {
+    const g = gens(), i = indexAffiche();
+    sel.innerHTML = g.map((x, k) => `<option value="${k}"${k === i ? " selected" : ""}>G${x.gen} — ${x.genre === "PIÈGE" ? "piège — " : ""}« ${esc(x.enonce)} » — ${x.survivants} survivant(s)</option>`).join("");
+    document.getElementById("g-prec").disabled = i <= 0;
+    document.getElementById("g-suiv").disabled = i < 0 || i >= g.length - 1;
+    document.getElementById("g-suivre-zone").style.display = run.en_cours ? "" : "none";
+    const q = document.getElementById("g-question"), zone = document.getElementById("g-agents");
+    // en direct : la génération en cours de réponse
+    if (run.en_cours && run.question_en_cours && (suivre.checked || vue == null)) {
+      q.innerHTML = `<div class="aide">Génération ${g.length + 1} — en cours</div><div class="enonce">« ${esc(run.question_en_cours)} »</div>`;
+      zone.innerHTML = `<div class="attente carte">Les ${run.population} agents réfléchissent… leurs réponses apparaîtront ici.</div>`;
+      return;
+    }
+    if (i < 0) { q.innerHTML = '<div class="attente">La première génération est en préparation…</div>'; zone.innerHTML = ""; return; }
+    const x = g[i];
+    const attendu = x.genre === "PIÈGE"
+      ? '<span class="attendu">Question piège : la bonne réponse est <b>REFUS</b></span>'
+      : `<span class="attendu">Réponse attendue : <b>${esc(x.attendu)}</b></span>`;
+    const recu = x.memorial_recu;
+    q.innerHTML = `<div class="aide">Génération ${x.gen} sur ${run.generations_prevues || g.length} · difficulté ${f2(x.difficulte)}</div>
+      <div class="enonce">« ${esc(x.enonce)} »</div>${attendu}
+      <div class="pills"><span class="pill">${x.corrects} juste(s)</span>${x.faux ? `<span class="pill">${x.faux} faux</span>` : ""}${x.abandons ? `<span class="pill">${x.abandons} abandon(s)</span>` : ""}${x.refus_pieges ? `<span class="pill">${x.refus_pieges} piège(s) déjoué(s)</span>` : ""}<span class="pill">${x.survivants} survivant(s)</span><span class="pill">risque moyen ${f2(x.risque_moyen)}</span>${x.duree != null ? `<span class="pill">durée ${Math.floor(x.duree / 60)} min ${x.duree % 60} s</span>` : ""}</div>
+      ${recu !== undefined ? `<details class="memorial-recu"><summary>Mémorial reçu par cette génération (${recu.length} entrée${recu.length > 1 ? "s" : ""})${x.memorial_arbitre ? ' <span class="badge-arbitre">modifié par l\'arbitre</span>' : ""}</summary>${recu.length ? "<ol>" + recu.map(m => `<li>${esc(m)}</li>`).join("") + "</ol>" : '<p class="aide">vide</p>'}</details>` : ""}`;
+    zone.innerHTML = x.agents.map(a => carteAgent(x, a)).join("");
+  }
+
+  // ---------------- bandeau, indicateurs, graphiques
+  function statut() {
+    const g = gens(), prevues = run.generations_prevues || g.length;
+    const etat = run.en_cours ? '<span class="live">● en cours</span>' : run.interrompu ? '<span class="ko">interrompu</span>' : '<span class="pill">terminé</span>';
+    document.getElementById("entete").innerHTML =
+      etat + `<span class="pill">${run.mode === "reel" ? "réel · " + esc(run.modele) : "simulé"}</span>` +
+      `<span class="pill">${run.population} agents</span><span class="pill">${g.length} / ${prevues} générations</span>` +
+      `<span class="pill">${run.secondes} s</span><span class="pill aide">${esc(run.run_id)}</span>`;
+    const p = prevues ? Math.round(100 * g.length / prevues) : 0;
+    document.getElementById("statut").innerHTML = run.en_cours
+      ? `<div class="progression" role="progressbar" aria-valuenow="${p}" aria-valuemin="0" aria-valuemax="100"><div style="width:${p}%"></div></div>` : "";
+  }
+
+  function indicateurs() {
+    const g = gens(), der = g[g.length - 1];
+    let agents = 0, surv = 0, justes = 0, combats = 0;
+    g.forEach(x => { agents += x.agents.length; surv += x.survivants; x.agents.forEach(a => { if (a.choix === "COMBAT") { combats++; if (a.correct) justes++; } }); });
+    const k = [
+      [g.length, "générations"],
+      [run.extinctions, "extinctions"],
+      [combats ? Math.round(100 * justes / combats) + " %" : "–", "réponses justes (parmi les combats)"],
+      [f2(run.difficulte_actuelle), "difficulté actuelle"],
+      [der ? f2(der.risque_moyen) : "–", "risque moyen (dernière gén.)"],
+      [agents ? Math.round(100 * surv / agents) + " %" : "–", "taux de survie"],
+    ];
+    document.getElementById("kpis").innerHTML = k.map(([v, l]) => `<div class="kpi"><div class="v">${esc(v)}</div><div class="l">${esc(l)}</div></div>`).join("");
+  }
+
+  // Diagnostic : repère les situations où l'évolution ne peut pas fonctionner.
+  function diagnostic() {
+    const g = gens(), z = document.getElementById("diagnostic"), points = [];
+    const n = g.length;
+    if (n >= 3) {
+      const surv = g.reduce((s, x) => s + x.survivants, 0);
+      if (surv === 0) {
+        const attendus = [...new Set(g.map(x => x.attendu).filter(a => a && /\s/.test(a.trim()) && !a.includes("|")))];
+        points.push(`<strong>Aucune sélection :</strong> aucun agent n'a survécu en ${n} générations, donc rien n'a pu évoluer.` +
+          (attendus.length ? ` Ta réponse attendue est une phrase (« ${esc(attendus[0].slice(0, 60))} ») : le juge ne la retrouvera presque jamais. Mets plutôt des <strong>mots-clés</strong> séparés par <code>|</code>.` : "") +
+          ` Si la question demande une information que les agents ne peuvent pas connaître, donne-la-leur dans <a href="/parametres">Paramètres → Connaissances fournies aux agents</a> : ils n'ont accès à rien d'autre.`);
+      }
+      const choix = g.flatMap(x => x.agents.map(a => a.choix));
+      if (choix.length && choix.every(c => c === "COMBAT") && g.some(x => x.genre === "PIÈGE" || x.survivants === 0)) {
+        points.push(`<strong>Personne ne refuse ni n'abandonne :</strong> ${choix.length} réponses sur ${choix.length} sont des COMBAT, même quand c'est perdu d'avance. Tes principes ou ton mémorial poussent peut-être à toujours combattre.`);
+      }
+    }
+    const mem = (run.memorial || []).map(m => m.replace(/^G\d+ · agent #\d+ \(\w+\) : /, "").toLowerCase().replace(/[«»"'.,;:!?]/g, " "));
+    if (mem.length >= 4) {
+      const compte = {};
+      mem.forEach(m => {
+        const mots = m.split(/\s+/).filter(Boolean), vus = new Set();
+        for (let i = 0; i + 4 <= mots.length; i++) vus.add(mots.slice(i, i + 4).join(" "));
+        vus.forEach(k => compte[k] = (compte[k] || 0) + 1);
+      });
+      const [phrase, nb] = Object.entries(compte).sort((a, b) => b[1] - a[1])[0] || ["", 0];
+      if (nb >= Math.max(3, Math.ceil(mem.length / 2))) {
+        points.push(`<strong>Le mémorial tourne en boucle :</strong> « ${esc(phrase)} » revient dans ${nb} entrées sur ${mem.length}. Les agents recopient le mémorial, leurs testaments le répètent, et il repart à la génération suivante. Réécris-le ou repars d'un mémorial vide.`);
+      }
+    }
+    z.innerHTML = points.length ? `<div class="diag" role="note"><h3>Diagnostic</h3><ul>${points.map(p => `<li>${p}</li>`).join("")}</ul></div>` : "";
+  }
+
+  function memorialListe() {
+    const z = document.getElementById("memorial-liste"); if (!z) return;
+    const m = run.memorial || [];
+    z.innerHTML = m.length ? "<ol>" + m.map(x => `<li>${esc(x)}</li>`).join("") + "</ol>" : '<p class="aide">Vide.</p>';
+  }
+
+  function rendre() {
+    const g = gens(), etiq = g.map(x => "G" + x.gen), sous = i => g[i].genre;
+    statut(); indicateurs(); diagnostic(); afficherGen(); memorialListe();
+    A.courbes("c-diff", etiq, [{ libelle: "difficulté", coul: "--s1", valeurs: g.map(x => x.difficulte) }], 0, 1, f2, { clic: i => ouvrirGen(g[i].gen), sousTitre: sous });
+    A.courbes("c-risque", etiq, [{ libelle: "risque moyen", coul: "--s1", valeurs: g.map(x => x.risque_moyen) }], 0, 1, f2, { clic: i => ouvrirGen(g[i].gen), sousTitre: sous });
+    A.barres("c-issues", "l-issues", etiq, [
+      { cle: "corrects", libelle: "justes", coul: "--s1" }, { cle: "faux", libelle: "faux", coul: "--s2" },
+      { cle: "abandons", libelle: "abandons", coul: "--s3" }, { cle: "refus_pieges", libelle: "refus de piège", coul: "--s4" },
+    ], (i, s) => g[i][s.cle] || 0, run.population || 1, { clic: i => ouvrirGen(g[i].gen), sousTitre: sous });
+    A.barres("c-modeles", "l-modeles", etiq, A.seriesModeles(g), (i, s) => g[i].agents.filter(a => a.modele === s.cle).length, run.population || 1, { clic: i => ouvrirGen(g[i].gen) });
+    A.arbre("arbre", "l-arbre", g);
+  }
+  rendre();
+  // lien direct vers une génération : /?run=…#gen-3
+  const ancre = /^#gen-(\d+)$/.exec(location.hash);
+  if (ancre) ouvrirGen(+ancre[1]);
+  let attente;
+  addEventListener("resize", () => { clearTimeout(attente); attente = setTimeout(rendre, 150); });
+
+  // ---------------- direct
+  if (run.en_cours) {
+    const minuteur = setInterval(async () => {
+      try {
+        const d = await (await fetch("/api/evolution?run=" + encodeURIComponent(runId), { cache: "no-store" })).json();
+        if (!d.run) return;
+        const cle = r => JSON.stringify([r.generations.length, r.en_cours, r.question_en_cours]);
+        const change = cle(d.run) !== cle(run);
+        run = d.run;
+        if (change) rendre();
+        if (!run.en_cours) { clearInterval(minuteur); setTimeout(() => location.reload(), 800); }
+      } catch (e) { /* serveur momentanément indisponible : on réessaie */ }
+    }, 2500);
+  }
+})();
+</script>
+{% endraw %}
+{% endif %}
+{% endblock %}

@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block titre %}Comparaison · Arène{% endblock %}
+{% block contenu %}
+<p><a href="/runs">← Historique</a></p>
+<h1>Comparaison de deux runs</h1>
+
+<div class="table-zone">
+<table>
+  <thead><tr><th></th>
+    <th><span class="legende" style="margin:0"><span><span class="sw" style="background:var(--s1)"></span>A</span></span> <a href="/?run={{ a.id }}">{{ a.resume.date }}</a></th>
+    <th><span class="legende" style="margin:0"><span><span class="sw" style="background:var(--s2)"></span>B</span></span> <a href="/?run={{ b.id }}">{{ b.resume.date }}</a></th>
+  </tr></thead>
+  <tbody>
+    <tr><th>Mode</th><td>{{ a.resume.mode }}</td><td>{{ b.resume.mode }}</td></tr>
+    <tr><th>Générations</th><td class="n">{{ a.resume.faites }} / {{ a.resume.prevues }}</td><td class="n">{{ b.resume.faites }} / {{ b.resume.prevues }}</td></tr>
+    <tr><th>Agents</th><td class="n">{{ a.resume.population }}</td><td class="n">{{ b.resume.population }}</td></tr>
+    <tr><th>Survivants (fin)</th><td class="n">{{ a.resume.survivants }}</td><td class="n">{{ b.resume.survivants }}</td></tr>
+    <tr><th>Difficulté finale</th><td class="n">{{ a.resume.difficulte }}</td><td class="n">{{ b.resume.difficulte }}</td></tr>
+    <tr><th>Risque moyen (fin)</th><td class="n">{{ a.resume.risque }}</td><td class="n">{{ b.resume.risque }}</td></tr>
+    <tr><th>Extinctions</th><td class="n">{{ a.resume.extinctions }}</td><td class="n">{{ b.resume.extinctions }}</td></tr>
+    <tr><th>Durée</th><td class="n">{{ a.resume.secondes }} s</td><td class="n">{{ b.resume.secondes }} s</td></tr>
+    <tr><th>Note</th><td>{{ a.resume.note }}</td><td>{{ b.resume.note }}</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2>Ce qui a changé dans les paramètres</h2>
+{% if not configs_presentes %}
+<p class="aide">Au moins un de ces runs a été lancé avant l'enregistrement des paramètres : la comparaison des réglages n'est pas disponible.</p>
+{% elif not diff %}
+<p class="aide">Mêmes paramètres pour les deux runs : les différences viennent du hasard (et de Qwen).</p>
+{% else %}
+<div class="table-zone"><table>
+  <thead><tr><th>Réglage</th><th>A</th><th>B</th></tr></thead>
+  <tbody>{% for d in diff %}<tr><th><code>{{ d.cle }}</code></th><td style="white-space:pre-wrap">{{ d.a }}</td><td style="white-space:pre-wrap">{{ d.b }}</td></tr>{% endfor %}</tbody>
+</table></div>
+{% endif %}
+
+<h2>Évolution comparée</h2>
+<div class="grille-charts">
+  <div class="carte"><h3>Difficulté</h3><svg id="c-diff" role="img" aria-label="Difficulté des deux runs"></svg><div class="legende" id="l-diff"></div></div>
+  <div class="carte"><h3>Goût du risque moyen</h3><svg id="c-risque" role="img" aria-label="Risque moyen des deux runs"></svg><div class="legende" id="l-risque"></div></div>
+  <div class="carte"><h3>Réponses justes par génération</h3><svg id="c-justes" role="img" aria-label="Réponses justes des deux runs"></svg><div class="legende" id="l-justes"></div></div>
+  <div class="carte"><h3>Survivants par génération</h3><svg id="c-surv" role="img" aria-label="Survivants des deux runs"></svg><div class="legende" id="l-surv"></div></div>
+</div>
+
+<script id="runs-data" type="application/json">{{ runs | tojson }}</script>
+<script src="/graphiques.js"></script>
+{% raw %}
+<script>
+(function () {
+  const A = window.Arene;
+  const [ra, rb] = JSON.parse(document.getElementById("runs-data").textContent);
+  const ga = ra.generations || [], gb = rb.generations || [];
+  const n = Math.max(ga.length, gb.length);
+  const etiq = Array.from({ length: n }, (_, i) => "G" + (i + 1));
+  const col = (g, cle) => etiq.map((_, i) => g[i] ? g[i][cle] : null);
+  const series = cle => [
+    { libelle: "A — " + ra.date_locale, coul: "--s1", valeurs: col(ga, cle) },
+    { libelle: "B — " + rb.date_locale, coul: "--s2", valeurs: col(gb, cle) },
+  ];
+  const pop = Math.max(ra.population || 1, rb.population || 1);
+  function rendre() {
+    A.courbes("c-diff", etiq, series("difficulte"), 0, 1, A.f2, { legende: "l-diff" });
+    A.courbes("c-risque", etiq, series("risque_moyen"), 0, 1, A.f2, { legende: "l-risque" });
+    A.courbes("c-justes", etiq, series("corrects"), 0, pop, A.entier, { legende: "l-justes" });
+    A.courbes("c-surv", etiq, series("survivants"), 0, pop, A.entier, { legende: "l-surv" });
+  }
+  rendre();
+  let attente;
+  addEventListener("resize", () => { clearTimeout(attente); attente = setTimeout(rendre, 150); });
+})();
+</script>
+{% endraw %}
+{% endblock %}

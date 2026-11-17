@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block titre %}Connexion · Arène{% endblock %}
+{% block contenu %}
+<div class="carte" style="max-width:460px; margin:40px auto">
+  <h1>Connexion</h1>
+  {% if admin %}
+  <p>Tu es déjà connecté. <a href="/">Aller au tableau de bord</a></p>
+  {% else %}
+  <form method="post" action="/connexion">
+    <p><label for="cle">Clé d'arbitre (fichier <code>donnees/cle-admin.txt</code>)</label><br>
+    <input type="password" id="cle" name="cle" style="width:100%" autocomplete="current-password" required autofocus></p>
+    <p><button>Se connecter</button></p>
+  </form>
+  <p class="aide">La session dure 30 jours dans ce navigateur.</p>
+  {% endif %}
+</div>
+{% endblock %}

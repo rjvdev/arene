@@ -1,0 +1,5 @@
+target/
+donnees/cle-admin.txt
+donnees/evolution/.*
+__pycache__/
+outils/searxng/
