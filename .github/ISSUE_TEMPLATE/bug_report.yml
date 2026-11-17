@@ -1,0 +1,22 @@
+name: Bug report
+description: Something does not work as described (the project is archived, no fix is guaranteed)
+labels: [bug]
+body:
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Real or simulated mode, settings changed, page or command used.
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Output
+      description: Server log or engine output. Remove anything private (referee key included).
+      render: text
+  - type: input
+    id: env
+    attributes:
+      label: Environment
+      placeholder: e.g. Ubuntu 24.04, Rust 1.90, Ollama 0.12, qwen3:4b

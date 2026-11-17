@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: The project is archived
+    url: https://github.com/rjvdev/arene#project-status
+    about: Version 1.0 is final. Fork the repository to build on it (MIT License).
+  - name: Looking for an active project?
+    url: https://github.com/rjvdev/odoo-multiverse
+    about: odoo-multiverse, by the same author, is actively maintained.
