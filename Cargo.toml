@@ -1,8 +1,12 @@
 [package]
 name = "arene"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
-description = "L'Arène des générations : jeu évolutionnaire entre agents IA"
+description = "L'Arène des générations : jeu évolutionnaire entre agents IA locaux (Qwen via Ollama)"
+license = "MIT"
+repository = "https://github.com/rjvdev/arene"
+readme = "README.md"
+keywords = ["ai-agents", "evolution", "ollama", "llm", "genetic-algorithm"]
 
 [dependencies]
 axum = "0.7"
