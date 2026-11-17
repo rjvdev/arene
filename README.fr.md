@@ -79,7 +79,7 @@ src/main.rs          serveur de l'interface (axum)
 src/bin/evolution.rs moteur : génome, mutations, questions, juge, calibreur, appels Ollama
 contenu/             gabarits des pages + graphiques.js
 agents-locaux/       evolution.toml, mémorial
-donnees/evolution/   un journal JSON (+ sortie brute .log, note .note.txt) par run ; 8 runs d'exemple
+donnees/evolution/   un journal JSON (+ sortie brute .log, note .note.txt) par run ; runs d'exemple fournis
 ```
 
 ## Tests

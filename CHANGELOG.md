@@ -35,7 +35,7 @@ First and final public release, with a prebuilt Linux binary.
 - Every change committed to Git automatically; each run keeps a copy of its settings; interrupted runs resume after a server restart.
 - Referee key and automatic local login (never through a tunnel).
 - Agent tools: Python in a throwaway, network-less Docker container, and web search through a local SearXNG (private addresses refused).
-- 8 sample runs, unit tests and an end-to-end test.
+- Sample runs, unit tests and an end-to-end test.
 
 [1.0.1]: https://github.com/rjvdev/arene/compare/v1.0...v1.0.1
 [1.0]: https://github.com/rjvdev/arene/releases/tag/v1.0

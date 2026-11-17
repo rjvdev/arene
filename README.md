@@ -79,7 +79,7 @@ src/main.rs          web interface server (axum)
 src/bin/evolution.rs engine: genome, mutations, questions, judge, calibrator, Ollama calls
 contenu/             page templates + graphiques.js
 agents-locaux/       evolution.toml, memorial
-donnees/evolution/   one JSON log (+ raw .log output, .note.txt note) per run; 8 sample runs included
+donnees/evolution/   one JSON log (+ raw .log output, .note.txt note) per run; sample runs included
 ```
 
 ## Tests
